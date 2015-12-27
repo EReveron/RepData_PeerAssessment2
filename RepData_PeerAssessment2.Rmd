@@ -1,0 +1,336 @@
+---
+title: "US Wheather Events Impact on Population Health and Economy Report"
+author: "Enrique Reveron"
+date: "December 26 2015"
+output: html_document
+---
+
+
+# Synopsis
+
+One of the most important and difficult tasks for goverment / municipal
+managers are related with the effects of wheather events and how to prioritize
+the resources to handle accordingly. 
+
+In order to provide a guide to them, in this report we will use the data of U.S. National Oceanic and Atmospheric Administration's (NOAA) to evaluate the Economic and Population Impact (Fatalities and Injuries) of all the wheather events in the U.S. from 1950 and end in November 2011. 
+
+The Database could be download it from the following URL:
+
+http://www.noaa.gov
+
+With this report We will answer two main questions: 
+
+1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health? 
+
+2. Across the United States, which types of events have the greatest economic consequences? 
+
+We will base our analysis in the following variables that are included in the NOAA Database: 
+
+* EVTYPE: Event Type, the name of the Wheather Event. 
+* FATALITIES: The total number of fatalities as a result of the wheather event. 
+* INJURIES: The total number of injuries as a result of the wheather event. 
+* PROPDMG: The total amount of property damage estimates (USD) as a result of the wheater event. 
+* CROPDMG: The total amount of crop damage estimates (USD) as a result of the wheater event.
+
+The analysis will be made using R Programming Language, Rstudio to write the report and RPubs to publicate it. 
+
+In order to get the most harmful wheather event, we will create a Data Set that aggregate all the events by number of FATALITIES and INJURIES. After that we will make two plot's of the top-10 events.
+
+Regarding Economic Impact, we will create a Data Set that aggregate (sum) all the events by total amount of damage (property + crop). We will also make a plot of the top-10 events.
+
+
+The Report will have two main sections:
+
+* Data Processing: in this part we will show all the R code to reproduce the analysis.
+* Results: in this part we will only show the results of the report. We will provide some plot's in order to show the top-10 events for each of the questions.
+
+We hope that this report could be used in order to create some strategy to act accordingly regarding the different wheather events.
+
+This report will not have any specific recommendations.
+
+# Data Processing
+
+Read the data into a Dataset
+
+```{r, echo=TRUE, cache = TRUE}
+dt <- read.csv("repdata-data-StormData.csv.bz2", stringsAsFactors = FALSE)
+colnames(dt)
+```
+
+Let's answer the two questions:
+
+### 1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+Create a new Data Set with only the EVTYPE and summarize the Injuries and Fatalities by Wheather Event (EVTYPE)
+
+```{r, echo=TRUE, cache = TRUE}
+dt2 <- aggregate(cbind(INJURIES,FATALITIES)~EVTYPE,dt,sum, na.rm = TRUE )
+colnames(dt2)
+```
+
+For information purposes, let's create two new column named PERCENTAGE_INJURIES and PERCENTAGE_FATALITIES that calculate the percentage for each event
+
+```{r, echo=TRUE}
+total_injuries <- sum(dt2$INJURIES)
+dt2$PERCENTAGE_INJURIES <- as.numeric((dt2$INJURIES / total_injuries) * 100)
+
+total_fatalities <- sum(dt2$FATALITIES)
+dt2$PERCENTAGE_FATALITIES <- as.numeric((dt2$FATALITIES / total_fatalities) * 100)
+
+```
+We will make two plot, Top_10 for Fatalities and Top_10 for Injuries
+
+#### Top_10 Fatalities
+Let's get the top_10 values for fatalities, for it let's order the dataset, choose the first 10 rows and add a final rows that include all the other values (other). Finally let's change it to numeric format.
+
+```{r, echo=TRUE}
+
+top10_fatalities <- dt2[with(dt2,order(-dt2$PERCENTAGE_FATALITIES)),]
+
+l <- length(dt2$EVTYPE)
+
+total_other_injuries <- sum(top10_fatalities$INJURIES[11:l])
+total_other_fatalities <- sum(top10_fatalities$FATALITIES[11:l])
+total_other_p_injuries <- sum(top10_fatalities$PERCENTAGE_INJURIES[11:l])
+total_other_p_fatalities <- sum(top10_fatalities$PERCENTAGE_FATALITIES[11:l])
+
+top10_fatalities <- top10_fatalities[1:10,]
+
+top10_fatalities <- rbind(top10_fatalities,
+                c("Others",
+                  total_other_injuries,
+                  total_other_fatalities,
+                  total_other_p_injuries,
+                  total_other_p_fatalities))
+
+top10_fatalities$INJURIES <- 
+  as.numeric(top10_fatalities$INJURIES)
+
+top10_fatalities$FATALITIES <- 
+  as.numeric(top10_fatalities$FATALITIES)
+
+
+top10_fatalities$PERCENTAGE_INJURIES <- 
+  as.numeric(top10_fatalities$PERCENTAGE_INJURIES)
+
+top10_fatalities$PERCENTAGE_FATALITIES <- 
+  as.numeric(top10_fatalities$PERCENTAGE_FATALITIES)
+
+
+options(digits = 2)
+top10_fatalities
+```
+
+Let's plot the result:
+
+```{r, echo=TRUE,warning=FALSE}
+library(ggplot2)
+
+g_top10_fatalities <- 
+    ggplot(top10_fatalities,aes(x=top10_fatalities$EVTYPE,
+                            y=top10_fatalities$FATALITIES, 
+                            ymax=max(top10_fatalities$FATALITIES)*1.05,
+                            fill=factor(EVTYPE))) +
+  	  geom_bar(stat="identity") + 
+	    coord_flip() + 
+  	  geom_text(aes(x=top10_fatalities$EVTYPE, y=top10_fatalities$FATALITIES,
+  	              label=format(top10_fatalities$FATALITIES,digits=3),size=1), 
+  	              position = position_dodge(width=0.9)) +
+      ylab('Fatalities') +
+      xlab('Wheather Event') +
+      theme(legend.position="none") +
+      ggtitle("U.S. Total Fatalities per Wheather Event (Top 10)")
+print(g_top10_fatalities)
+
+```
+
+
+
+
+#### Top_10 Injuries
+Let's get the top_10 values for injuries, for it let's order the dataset, choose the first 10 rows and add a final rows that include all the other values (other). Finally let's change it to numeric format.
+
+
+```{r, echo=TRUE}
+
+top10_injuries <- dt2[with(dt2,order(-dt2$PERCENTAGE_INJURIES)),]
+
+l <- length(dt2$EVTYPE)
+
+total_other_injuries <- sum(top10_injuries$INJURIES[11:l])
+total_other_fatalities <- sum(top10_injuries$FATALITIES[11:l])
+total_other_p_injuries <- sum(top10_injuries$PERCENTAGE_INJURIES[11:l])
+total_other_p_fatalities <- sum(top10_injuries$PERCENTAGE_FATALITIES[11:l])
+
+top10_injuries <- top10_injuries[1:10,]
+
+top10_injuries <- rbind(top10_injuries,
+                c("Others",
+                  total_other_injuries,
+                  total_other_fatalities,
+                  total_other_p_injuries,
+                  total_other_p_fatalities))
+
+top10_injuries$INJURIES <- 
+  as.numeric(top10_injuries$INJURIES)
+
+top10_injuries$FATALITIES <- 
+  as.numeric(top10_injuries$FATALITIES)
+
+top10_injuries$PERCENTAGE_INJURIES <- 
+  as.numeric(top10_injuries$PERCENTAGE_INJURIES)
+
+top10_injuries$PERCENTAGE_FATALITIES <- 
+  as.numeric(top10_injuries$PERCENTAGE_FATALITIES)
+
+options(digits = 2)
+top10_injuries
+```
+
+Let's plot the result:
+
+```{r, echo=TRUE,warning=FALSE}
+g_top10_injuries <- 
+    ggplot(top10_injuries,aes(x=top10_injuries$EVTYPE,
+                            y=top10_injuries$INJURIES, 	
+                            fill=factor(EVTYPE))) +
+  	  geom_bar(stat="identity") + 
+	    coord_flip() + 
+  	  geom_text(aes(x=top10_injuries$EVTYPE, y=top10_injuries$INJURIES,
+  	                ymax=max(top10_injuries$INJURIES)*1.05,
+  	                label=format(top10_injuries$INJURIES,digits=3),size=1),
+  	            position = position_dodge(width=0.9)) +
+      ylab('Injuries') +
+      xlab('Wheather Event') +
+      theme(legend.position="none") +
+      ggtitle("U.S. Total Injuries per Wheather Event (Top 10)")
+print(g_top10_injuries)
+
+```
+
+
+### 2. Across the United States, which types of events have the greatest economic consequences?
+
+Create a new Data Set with only four columns (EVTYPE,PROPDMG, PROPDMGEXP, CROPMDG, CROPDMGEXP). Create a new variable (PROPDMG_2 and CROPDMG_2) that consider the exponential value (k,M,b)
+
+```{r, echo=TRUE}
+
+dt3 <- dt[c(8,25:28)]
+
+dt3$PROPDMG_2 <- ifelse(  
+			dt3$PROPDMGEXP %in% c("K","k"), 
+				dt3$PROPDMG * 1000, 
+
+			(ifelse( dt3$PROPDMGEXP %in% c("M","m"), 
+				dt3$PROPDMG * 1000000,
+
+			 (ifelse( dt3$PROPDMGEXP %in% c("B","b"), 
+				dt3$PROPDMG * 1000000000, 
+				dt3$PROPDMG)))))
+
+dt3$CROPDMG_2 <- ifelse(  
+			dt3$CROPDMGEXP %in% c("K","k"), 
+				dt3$CROPDMG * 1000, 
+
+			(ifelse( dt3$CROPDMGEXP %in% c("M","m"), 
+				dt3$CROPDMG * 1000000,
+
+			 (ifelse( dt3$CROPDMGEXP %in% c("B","b"), 
+				dt3$CROPDMG * 1000000000, 
+				dt3$CROPDMG)))))
+```
+
+Lets summarize the damage (property + crop) and create a new dataset
+
+```{r, echo=TRUE}
+dt4 <- aggregate(PROPDMG_2+CROPDMG_2~EVTYPE,dt3,sum,na.rm = TRUE )
+names(dt4) <- c("EVTYPE","ECONOMIC_DAMAGE")
+```
+
+For information purposes, let's create a new column named PERCENTAGE_ECONOMIC_DAMAGE
+that calculate the percentage for each event
+
+```{r, echo=TRUE}
+total_damage <- sum(dt4$ECONOMIC_DAMAGE)
+dt4$PERCENTAGE_ECONOMIC_DAMAGE <- 
+  as.numeric((dt4$ECONOMIC_DAMAGE / total_damage) * 100)
+```
+
+Let's get the top_10 values, for it let's order the dataset, choose
+the first 10 rows and add a final rows that include all the other values (other)
+
+```{r, echo=TRUE}
+l <- length(dt4$EVTYPE)
+
+dt5 <- dt4[with(dt4,order(-dt4$PERCENTAGE_ECONOMIC_DAMAGE)),]
+
+top10_economic <- dt5[1:10,]
+
+top10_economic <- rbind(top10_economic,
+                c("Others",
+                  sum(dt5$ECONOMIC_DAMAGE[11:l]),
+                  sum(dt5$PERCENTAGE_ECONOMIC_DAMAGE[11:l])))
+
+
+top10_economic$ECONOMIC_DAMAGE <- 
+  as.numeric(top10_economic$ECONOMIC_DAMAGE)
+
+top10_economic$PERCENTAGE_ECONOMIC_DAMAGE <- 
+  as.numeric(top10_economic$PERCENTAGE_ECONOMIC_DAMAGE)
+
+options(digits = 2)
+top10_economic
+```
+
+Let's plot it, we will change the scale to billions USD:
+
+```{r, echo=TRUE, warning=FALSE}
+
+top10_economic$ECONOMIC_DAMAGE <- 
+  as.numeric(top10_economic$ECONOMIC_DAMAGE) / 1000000000
+
+g_top10_economic <- 
+  ggplot(top10_economic,aes(x=top10_economic$EVTYPE,
+                            y=top10_economic$ECONOMIC_DAMAGE, 	
+		fill=factor(EVTYPE))) +
+	  geom_bar(stat="identity") + 
+	  coord_flip() + 
+  	geom_text(aes(x=top10_economic$EVTYPE, 
+  	              y=top10_economic$ECONOMIC_DAMAGE,
+  	              ymax=max(top10_economic$ECONOMIC_DAMAGE)*1.05,
+  	              label=format(top10_economic$ECONOMIC_DAMAGE,digits=3),size=1),
+  	              position = position_dodge(width=0.9)) +
+    ylab('Economic Damage (Billion Dollars)') +
+    xlab('Wheather Event') +
+    theme(legend.position="none") +
+    ggtitle("U.S. Total Economic Damage per Wheather Event (Top 10)")
+print(g_top10_economic)
+
+```
+
+
+
+# Results
+
+Those are the results of the report:
+
+## Top_10 Whether Events in the U.S. by Fatalities
+```{r, echo=FALSE,warning=FALSE}
+library(knitr)
+kable(top10_fatalities,digits=2)
+print(g_top10_fatalities)
+```
+
+## Top_10 Whether Events in the U.S. by Injuries
+```{r, echo=FALSE,warning=FALSE}
+library(knitr)
+kable(top10_injuries,digits=2)
+print(g_top10_injuries)
+```
+
+## Top_10 Whether Events in the U.S. by Economic Damage
+```{r, echo=FALSE,warning=FALSE}
+library(knitr)
+kable(top10_economic,digits=2)
+print(g_top10_economic)
+```
